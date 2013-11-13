@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+
+  "name": "Subsonic++ Next",
+  "description": "Subsonic++ is a Chrome extension to extend subsonic server in desktop",
+  "version": "1.0",
+  "author": "Xavier Boubert http://xavierboubert.fr",
+
+  "icons": {
+    "16": "assets/images/icon-next.png",
+    "48": "assets/images/icon-next.png",
+    "128": "assets/images/icon-next.png"
+  },
+  "permissions": [
+    "tabs", "http://*/", "https://*/"
+  ],
+  "browser_action": {
+    "default_title": "Suivant",
+    "default_icon": "assets/images/icon-next.png"
+  },
+  "background": {
+    "scripts": ["js/app.js"],
+    "persistent": false
+  }
+}
