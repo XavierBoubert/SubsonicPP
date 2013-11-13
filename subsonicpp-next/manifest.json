@@ -16,7 +16,7 @@
   ],
   "browser_action": {
     "default_title": "Suivant",
-    "default_icon": "assets/images/icon-next.png"
+    "default_icon": "assets/images/icon-next-disabled.png"
   },
   "background": {
     "scripts": ["js/app.js"],

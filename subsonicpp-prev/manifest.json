@@ -16,7 +16,7 @@
   ],
   "browser_action": {
     "default_title": "Précédent",
-    "default_icon": "assets/images/icon-prev.png"
+    "default_icon": "assets/images/icon-prev-disabled.png"
   },
   "background": {
     "scripts": ["js/app.js"],

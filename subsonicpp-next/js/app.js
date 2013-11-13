@@ -5,12 +5,14 @@
 
     var _subsonic = this,
         _tab = false,
+        _isEnabled = false,
         _lastAction = '',
         _lastCover = '',
         _DOMPath = 'window.frames[4]';
 
     this.tab = function(callback) {
       chrome.windows.getAll({ populate: true }, function(windowList) {
+        _tab = false;
         for(var i = 0; i < windowList.length; i++) {
           for (var j = 0; j < windowList[i].tabs.length; j++) {
             var tab = windowList[i].tabs[j];
@@ -148,13 +150,11 @@
       _subsonic.tab(function() {
         if(_tab) {
           var actions = _subsonic.actions();
-          if(actions.length > 1) {
-            if(actions[1] != _lastCover) {
-              if(callback) {
-                callback(actions[1]);
-              }
-              _lastCover = actions[1];
+          if(actions.length > 1 && actions != _lastCover) {
+            if(callback) {
+              callback(actions);
             }
+            _lastCover = actions;
           }
         }
 
@@ -170,6 +170,33 @@
       }, 1000);
     };
 
+    function isEnabledObserver(callback) {
+      _subsonic.tab(function() {
+        if((_tab && !_isEnabled) || (!_tab && _isEnabled)) {
+          _isEnabled = !_isEnabled;
+          if(callback) {
+            callback(_isEnabled);
+          }
+        }
+
+        setTimeout(function() {
+          isEnabledObserver(callback);
+        }, 1000);
+      });
+    }
+
+    this.startEnabledObserver = function(callback) {
+      setTimeout(function() {
+        isEnabledObserver(callback);
+      }, 1000);
+    };
+
+  });
+
+  Subsonic.startEnabledObserver(function(isEnabled) {
+    chrome.browserAction.setIcon({
+      path: 'assets/images/icon-next' + (isEnabled ? '' : '-disabled') + '.png'
+    });
   });
 
   chrome.browserAction.onClicked.addListener(function(tab) {

@@ -5,12 +5,14 @@
 
     var _subsonic = this,
         _tab = false,
+        _isEnabled = false,
         _lastAction = '',
         _lastCover = '',
         _DOMPath = 'window.frames[4]';
 
     this.tab = function(callback) {
       chrome.windows.getAll({ populate: true }, function(windowList) {
+        _tab = false;
         for(var i = 0; i < windowList.length; i++) {
           for (var j = 0; j < windowList[i].tabs.length; j++) {
             var tab = windowList[i].tabs[j];
@@ -148,13 +150,11 @@
       _subsonic.tab(function() {
         if(_tab) {
           var actions = _subsonic.actions();
-          if(actions.length > 1) {
-            if(actions != _lastCover) {
-              if(callback) {
-                callback(actions);
-              }
-              _lastCover = actions;
+          if(actions.length > 1 && actions != _lastCover) {
+            if(callback) {
+              callback(actions);
             }
+            _lastCover = actions;
           }
         }
 
@@ -167,6 +167,27 @@
     this.startCoverObserver = function(callback) {
       setTimeout(function() {
         coverObserver(callback);
+      }, 1000);
+    };
+
+    function isEnabledObserver(callback) {
+      _subsonic.tab(function() {
+        if((_tab && !_isEnabled) || (!_tab && _isEnabled)) {
+          _isEnabled = !_isEnabled;
+          if(callback) {
+            callback(_isEnabled);
+          }
+        }
+
+        setTimeout(function() {
+          isEnabledObserver(callback);
+        }, 1000);
+      });
+    }
+
+    this.startEnabledObserver = function(callback) {
+      setTimeout(function() {
+        isEnabledObserver(callback);
       }, 1000);
     };
 
