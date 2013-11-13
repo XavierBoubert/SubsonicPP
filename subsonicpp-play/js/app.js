@@ -41,7 +41,6 @@
     this.exec = function(script) {
       _subsonic.tab(function() {
         if(_tab) {
-          console.log(script);
           chrome.tabs.update(_tab.id, {url: 'javascript:' + script});
         }
       });
