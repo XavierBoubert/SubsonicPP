@@ -5,16 +5,9 @@
 
     var _subsonic = this,
         _tab = false,
-        _isPlaying = false,
+        _lastAction = '',
+        _lastCover = '',
         _DOMPath = 'window.frames[4]';
-
-    //getCurrentSongIndex()
-    //songs.length
-    //skip(0) -> start 0
-
-    // nowPlayingService.getNowPlayingForCurrentPlayer(function(info) {
-    //console.log(info);
-    //});
 
     this.tab = function(callback) {
       chrome.windows.getAll({ populate: true }, function(windowList) {
@@ -40,7 +33,7 @@
     };
 
     this.isPlaying = function() {
-      return _isPlaying;
+      return _lastAction == 'PLAYING';
     };
 
     this.exec = function(script) {
@@ -82,24 +75,31 @@
       _subsonic.exec(_DOMPath + '.onNext(false);');
     };
 
+    this.actions = function() {
+      if(_tab) {
+        return _tab.title.replace('Subsonic', '').replace('[', '').replace(']', '').trim().split(';');
+      }
+      return [];
+    };
+
     function playingObserver(callback) {
       _subsonic.tab(function() {
         if(_tab) {
-          var action = _tab.title.replace('Subsonic', '').replace('#', '').trim().toUpperCase();
-          if(action != '') {
-            if(_isPlaying != (action == 'PLAYING')) {
-              _isPlaying = !_isPlaying;
+          var actions = _subsonic.actions();
+          if(actions.length > 0) {
+            if(actions[0] != _lastAction) {
+              _lastAction = actions[0];
               if(callback) {
-                callback(_isPlaying);
+                callback(actions[0]);
               }
             }
-
-            setTimeout(function() {
-              playingObserver(callback);
-            }, 1000);
-
-            return;
           }
+
+          setTimeout(function() {
+            playingObserver(callback);
+          }, 1000);
+
+          return;
         }
 
         _subsonic.startPlayingObserver(callback);
@@ -111,9 +111,26 @@
         if(_tab) {
           setTimeout(function() {
             _subsonic.exec(
-              'window.document.title = "Subsonic #IDLE";' +
-              _DOMPath + '.playingObserver = function(obj) { window.parent.document.title = "Subsonic #" + obj.newstate; };' +
-              _DOMPath + '.player.addModelListener("STATE", "playingObserver");'
+              'if(typeof window.titleMessage == "undefined") {' +
+                'window.titleMessage = ["IDLE", ""];' +
+                'window.updateTitle = function() {' +
+                  'window.document.title = "Subsonic [" + window.titleMessage.join(";") + "]";' +
+                '};' +
+                _DOMPath + '.playingObserver = function(obj) {' +
+                  _DOMPath + '.nowPlayingService.getNowPlayingForCurrentPlayer(function(nowPlayingInfo) {' +
+                    'nowPlayingInfo = nowPlayingInfo || {};' +
+                    'nowPlayingInfo.artist = nowPlayingInfo.artist || "";' +
+                    'nowPlayingInfo.title = nowPlayingInfo.title || "";' +
+                    'nowPlayingInfo.coverArtZoomUrl = nowPlayingInfo.coverArtZoomUrl || "";' +
+                    'window.titleMessage[0] = obj.newstate;' + 
+                    'window.titleMessage[1] = nowPlayingInfo.artist;' + 
+                    'window.titleMessage[2] = nowPlayingInfo.title;' + 
+                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' + 
+                    'window.updateTitle();' + 
+                  '});' +
+                '};' +
+                _DOMPath + '.player.addModelListener("STATE", "playingObserver");' +
+              '}'
             );
 
             playingObserver(callback);
@@ -127,14 +144,47 @@
       });
     };
 
+    function coverObserver(callback) {
+      _subsonic.tab(function() {
+        if(_tab) {
+          var actions = _subsonic.actions();
+          if(actions.length > 1) {
+            if(actions[1] != _lastCover) {
+              if(callback) {
+                callback(actions[1]);
+              }
+              _lastCover = actions[1];
+            }
+          }
+        }
+
+        setTimeout(function() {
+          coverObserver(callback);
+        }, 1000);
+      });
+    }
+
+    this.startCoverObserver = function(callback) {
+      setTimeout(function() {
+        coverObserver(callback);
+      }, 1000);
+    };
+
   });
 
   Subsonic.startPlayingObserver(updatePlayIcon);
 
-  function updatePlayIcon(isPlaying) {
-    chrome.browserAction.setIcon({
-      path: 'assets/images/icon-' + (isPlaying ? 'stop' : 'play') + '.png'
-    });
+  var _isPlaying = false;
+
+  function updatePlayIcon(action) {
+    if(_isPlaying != Subsonic.isPlaying()) {
+      _isPlaying = !_isPlaying;
+
+
+      chrome.browserAction.setIcon({
+        path: 'assets/images/icon-' + (_isPlaying ? 'stop' : 'play') + '.png'
+      });
+    }
   }
 
   chrome.browserAction.onClicked.addListener(function(tab) {
@@ -142,4 +192,3 @@
   });
 
 })();
-
