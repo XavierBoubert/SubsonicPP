@@ -124,11 +124,11 @@
                     'nowPlayingInfo.artist = nowPlayingInfo.artist || "";' +
                     'nowPlayingInfo.title = nowPlayingInfo.title || "";' +
                     'nowPlayingInfo.coverArtZoomUrl = nowPlayingInfo.coverArtZoomUrl || "";' +
-                    'window.titleMessage[0] = obj.newstate;' + 
-                    'window.titleMessage[1] = nowPlayingInfo.artist;' + 
-                    'window.titleMessage[2] = nowPlayingInfo.title;' + 
-                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' + 
-                    'window.updateTitle();' + 
+                    'window.titleMessage[0] = obj.newstate;' +
+                    'window.titleMessage[1] = nowPlayingInfo.artist;' +
+                    'window.titleMessage[2] = nowPlayingInfo.title;' +
+                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' +
+                    'window.updateTitle();' +
                   '});' +
                 '};' +
                 _DOMPath + '.player.addModelListener("STATE", "playingObserver");' +

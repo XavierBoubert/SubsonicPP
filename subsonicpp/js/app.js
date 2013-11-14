@@ -124,11 +124,11 @@
                     'nowPlayingInfo.artist = nowPlayingInfo.artist || "";' +
                     'nowPlayingInfo.title = nowPlayingInfo.title || "";' +
                     'nowPlayingInfo.coverArtZoomUrl = nowPlayingInfo.coverArtZoomUrl || "";' +
-                    'window.titleMessage[0] = obj.newstate;' + 
-                    'window.titleMessage[1] = nowPlayingInfo.artist;' + 
-                    'window.titleMessage[2] = nowPlayingInfo.title;' + 
-                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' + 
-                    'window.updateTitle();' + 
+                    'window.titleMessage[0] = obj.newstate;' +
+                    'window.titleMessage[1] = nowPlayingInfo.artist;' +
+                    'window.titleMessage[2] = nowPlayingInfo.title;' +
+                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' +
+                    'window.updateTitle();' +
                   '});' +
                 '};' +
                 _DOMPath + '.player.addModelListener("STATE", "playingObserver");' +
@@ -193,7 +193,9 @@
 
   });
 
-  Subsonic.startCoverObserver(function(actions) {
+  Subsonic.startCoverObserver(changeCover);
+
+  function changeCover(actions) {
     var artist = actions[1] || 'Subsonic++';
     var title = actions[2] || 'Webservice Off';
     var cover = actions[3] ? actions[3] + '&size=48' : 'assets/images/icon.png';
@@ -203,6 +205,20 @@
     chrome.browserAction.setIcon({
       path: cover
     });
+  };
+
+  chrome.browserAction.setBadgeText({
+    text: ' '
   });
+
+  Subsonic.startEnabledObserver(function(isEnabled) {
+    var color = isEnabled ? [0, 166, 0, 255] : [172, 25, 61, 255];
+    chrome.browserAction.setBadgeBackgroundColor({
+      color: color
+    });
+    changeCover([]);
+  });
+
+
 
 })();
