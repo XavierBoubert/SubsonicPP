@@ -236,12 +236,28 @@
     });
   });
 
-  Subsonic.on('enabled', function(isEnabled) {
+  function enabled(isEnabled) {
     var color = isEnabled ? [0, 166, 0, 255] : [172, 25, 61, 255];
     chrome.browserAction.setBadgeBackgroundColor({
       color: color
     });
-  });
+
+    var title = isEnabled ? 'No music played' : 'Service off';
+    chrome.browserAction.setTitle({
+      title: 'Subsonic++\n' + title
+    });
+
+    if(isEnabled) {
+      chrome.browserAction.enable();
+    }
+    else {
+      chrome.browserAction.disable();
+    }
+  }
+  enabled(false);
+
+  Subsonic.on('enabled', enabled);
+  
 
   chrome.browserAction.setBadgeText({
     text: ' '

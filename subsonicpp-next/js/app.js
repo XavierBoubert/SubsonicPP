@@ -221,10 +221,14 @@
   });
 
   Subsonic.on('enabled', function(isEnabled) {
-    chrome.browserAction.setIcon({
-      path: 'assets/images/icon-next' + (isEnabled ? '' : '-disabled') + '.png'
-    });
+    if(isEnabled) {
+      chrome.browserAction.enable();
+    }
+    else {
+      chrome.browserAction.disable();
+    }
   });
+  chrome.browserAction.disable();
 
   chrome.browserAction.onClicked.addListener(function(tab) {
     if(Subsonic.isEnabled()) {

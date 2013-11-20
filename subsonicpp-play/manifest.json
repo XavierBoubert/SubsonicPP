@@ -16,7 +16,7 @@
   ],
   "browser_action": {
     "default_title": "Play",
-    "default_icon": "assets/images/icon-play-disabled.png"
+    "default_icon": "assets/images/icon-play.png"
   },
   "background": {
     "scripts": ["js/app.js"],
