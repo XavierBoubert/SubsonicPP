@@ -6,17 +6,51 @@
     var _subsonic = this,
         _tab = false,
         _isEnabled = false,
-        _lastAction = '',
-        _lastCover = '',
+        _message = {},
+        _messageMap = ['state', 'artist', 'title', 'cover'],
+        _events = {},
+        _disabledTitle = 'Subsonic',
         _DOMPath = 'window.frames[4]';
+
+    // MESSAGE METHODS
+
+    function makeMessageKeyFunction(key) {
+      _subsonic[key] = function() {
+        if(typeof _message[key] != 'undefined') {
+          return _message[key];
+        }
+        return '';
+      };
+    };
+
+    for(var i = 0; i < _messageMap.length; i++) {
+      makeMessageKeyFunction(_messageMap[i]);      
+    }
+
+    // EVENTS
+
+    this.on = function(eventName, eventFunc) {
+      _events[eventName] = _events[eventName] || [];
+      _events[eventName].push(eventFunc);
+    };
+
+    this.fire = function(eventName, args) {
+      if(typeof _events[eventName] != 'undefined') {
+        for(var i = 0; i < _events[eventName].length; i++) {
+          _events[eventName][i](args);
+        }
+      }
+    };
+
+    // GET TAB
 
     this.tab = function(callback) {
       chrome.windows.getAll({ populate: true }, function(windowList) {
         _tab = false;
         for(var i = 0; i < windowList.length; i++) {
-          for (var j = 0; j < windowList[i].tabs.length; j++) {
+          for(var j = 0; j < windowList[i].tabs.length; j++) {
             var tab = windowList[i].tabs[j];
-            if(tab.title.indexOf('Subsonic') === 0) {
+            if(tab.title.indexOf(_disabledTitle) === 0) {
               _tab = tab;
               callback(tab);
               return;
@@ -30,13 +64,7 @@
       return false;
     };
 
-    this.isTab = function(tabId) {
-      return _tab && tab.id == tabId;
-    };
-
-    this.isPlaying = function() {
-      return _lastAction == 'PLAYING';
-    };
+    // EXECUTE JAVASCRIPT ON TAB
 
     this.exec = function(script) {
       _subsonic.tab(function() {
@@ -45,6 +73,18 @@
         }
       });
     };
+
+    // IS
+
+    this.isEnabled = function() {
+      return _isEnabled;
+    };
+
+    this.isPlaying = function() {
+      return _subsonic.state() == 'PLAYING';
+    };
+
+    // ACTIONS
 
     this.play = function() {
       _subsonic.exec(
@@ -57,18 +97,6 @@
       _subsonic.exec(_DOMPath + '.player.sendEvent("PLAY", "false");');
     };
 
-    this.togglePlayStop = function(callback) {
-      if(_subsonic.isPlaying()) {
-        _subsonic.stop();
-      }
-      else {
-        _subsonic.play();
-      }
-      if(callback) {
-        callback(_subsonic.isPlaying());
-      }
-    };
-
     this.prev = function() {
       _subsonic.exec(_DOMPath + '.onPrevious();');
     };
@@ -77,131 +105,134 @@
       _subsonic.exec(_DOMPath + '.onNext(false);');
     };
 
-    this.actions = function() {
-      if(_tab) {
-        return _tab.title.replace('Subsonic', '').replace('[', '').replace(']', '').trim().split(';');
-      }
-      return [];
-    };
+    // CONTROLLER
 
-    function playingObserver(callback) {
+    function addControllerToTab() {
+      _subsonic.exec(
+        'if(typeof window.titleMessage == "undefined") {' +
+          'window.titleMessageDefault = "IDLE|||";' +
+          'window.titleMessage = window.titleMessageDefault.split("|");' +
+          'window.updateTitle = function() {' +
+            'window.document.title = "Subsonic [" + window.titleMessage.join("|") + "]";' +
+          '};' +
+          'window.updateTitle();' +
+          'window.playingObserver = function(obj) {' +
+            _DOMPath + '.nowPlayingService.getNowPlayingForCurrentPlayer(function(nowPlayingInfo) {' +
+              'nowPlayingInfo = nowPlayingInfo || {};' +
+              'nowPlayingInfo.artist = nowPlayingInfo.artist || "";' +
+              'nowPlayingInfo.title = nowPlayingInfo.title || "";' +
+              'nowPlayingInfo.coverArtZoomUrl = nowPlayingInfo.coverArtZoomUrl || "";' +
+              'window.titleMessage[0] = obj.newstate;' +
+              'window.titleMessage[1] = nowPlayingInfo.artist;' +
+              'window.titleMessage[2] = nowPlayingInfo.title;' +
+              'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' +
+              'window.updateTitle();' +
+            '});' +
+          '};' +
+          'function addPlayerListener() {' +
+            'if(' + _DOMPath + '.player) {' +
+              _DOMPath + '.playingObserver = function(obj) {' +
+                'window.top.playingObserver(obj);' +
+              '};' +
+              _DOMPath + '.player.addModelListener("STATE", "playingObserver");' +
+            '}' +
+            'else {' +
+              'setTimeout(addPlayerListener, 1000);' +
+            '}' +
+          '}' +
+          'function playerListenerObserver() {' +
+            'if(typeof ' + _DOMPath + '.isSubsonicPP == "undefined" || !' + _DOMPath + '.isSubsonicPP) {' +
+              'window.titleMessage = window.titleMessageDefault.split("|");' +
+              'window.updateTitle();' +
+              _DOMPath + '.isSubsonicPP = true;' +
+              'addPlayerListener();' +
+            '}' +
+            'setTimeout(playerListenerObserver, 1000);' +
+          '}' +
+          'playerListenerObserver();' +
+        '}'
+      );
+    }
+
+    function constrollerObserver() {
       _subsonic.tab(function() {
-        if(_tab) {
-          var actions = _subsonic.actions();
-          if(actions.length > 0) {
-            if(actions[0] != _lastAction) {
-              _lastAction = actions[0];
-              if(callback) {
-                callback(actions[0]);
-              }
-            }
-          }
+        var stopObserve = false;
 
+        if(_tab && _tab.title == _disabledTitle) {
+          stopObserve = true;
           setTimeout(function() {
-            playingObserver(callback);
-          }, 1000);
-
-          return;
+            addControllerToTab();
+            setTimeout(constrollerObserver, 1000);
+          }, 2000);
         }
 
-        _subsonic.startPlayingObserver(callback);
+        if(!stopObserve) {
+          setTimeout(constrollerObserver, 1000);
+        }
       });
     }
 
-    this.startPlayingObserver = function(callback) {
-      _subsonic.tab(function() {
-        if(_tab) {
-          setTimeout(function() {
-            _subsonic.exec(
-              'if(typeof window.titleMessage == "undefined") {' +
-                'window.titleMessage = ["IDLE", ""];' +
-                'window.updateTitle = function() {' +
-                  'window.document.title = "Subsonic [" + window.titleMessage.join(";") + "]";' +
-                '};' +
-                _DOMPath + '.playingObserver = function(obj) {' +
-                  _DOMPath + '.nowPlayingService.getNowPlayingForCurrentPlayer(function(nowPlayingInfo) {' +
-                    'nowPlayingInfo = nowPlayingInfo || {};' +
-                    'nowPlayingInfo.artist = nowPlayingInfo.artist || "";' +
-                    'nowPlayingInfo.title = nowPlayingInfo.title || "";' +
-                    'nowPlayingInfo.coverArtZoomUrl = nowPlayingInfo.coverArtZoomUrl || "";' +
-                    'window.titleMessage[0] = obj.newstate;' + 
-                    'window.titleMessage[1] = nowPlayingInfo.artist;' + 
-                    'window.titleMessage[2] = nowPlayingInfo.title;' + 
-                    'window.titleMessage[3] = nowPlayingInfo.coverArtZoomUrl;' + 
-                    'window.updateTitle();' + 
-                  '});' +
-                '};' +
-                _DOMPath + '.player.addModelListener("STATE", "playingObserver");' +
-              '}'
-            );
+    this.startController = function() {
+      constrollerObserver();
+    };
 
-            playingObserver(callback);
-          }, 3000);
+    // MESSAGE
+
+    function messageObserver() {
+      _subsonic.tab(function() {
+        if(_tab && _tab.title != _disabledTitle) {
+          if(!_isEnabled) {
+            _subsonic.fire('enabled', true);
+          }
+          _isEnabled = true;
+          var newMessageArray = _tab.title.replace(_disabledTitle, '').replace('[', '').replace(']', '').trim().split('|');
+          var newMessage = {};
+          for(var i = 0; i < _messageMap.length; i++) {
+            var key = _messageMap[i];
+            newMessage[key] = newMessageArray[i];
+            if(typeof _message[key] == 'undefined' || _message[key] != newMessage[key]) {
+              _message[key] = newMessage[key];
+              _subsonic.fire(key, _message[key]);
+            }
+          }
+          _message = newMessage;
         }
         else {
-          setTimeout(function() {
-            _subsonic.startPlayingObserver(callback);
-          }, 1000);
-        }
-      });
-    };
-
-    function coverObserver(callback) {
-      _subsonic.tab(function() {
-        if(_tab) {
-          var actions = _subsonic.actions();
-          if(actions.length > 1 && actions != _lastCover) {
-            if(callback) {
-              callback(actions);
+          if(_isEnabled) {
+            for(var i = 0; i < _messageMap.length; i++) {
+              var key = _messageMap[i];
+              _message[key] = '';
+              _subsonic.fire(key, _message[key]);
             }
-            _lastCover = actions;
+            _subsonic.fire('enabled', false);
           }
+          _isEnabled = false;
         }
 
-        setTimeout(function() {
-          coverObserver(callback);
-        }, 1000);
       });
-    }
 
-    this.startCoverObserver = function(callback) {
-      setTimeout(function() {
-        coverObserver(callback);
-      }, 1000);
+      setTimeout(messageObserver, 1000);
     };
 
-    function isEnabledObserver(callback) {
-      _subsonic.tab(function() {
-        if((_tab && !_isEnabled) || (!_tab && _isEnabled)) {
-          _isEnabled = !_isEnabled;
-          if(callback) {
-            callback(_isEnabled);
-          }
-        }
-
-        setTimeout(function() {
-          isEnabledObserver(callback);
-        }, 1000);
-      });
-    }
-
-    this.startEnabledObserver = function(callback) {
-      setTimeout(function() {
-        isEnabledObserver(callback);
-      }, 1000);
+    this.startMessageObserver = function() {
+      messageObserver();
     };
 
   });
 
-  Subsonic.startEnabledObserver(function(isEnabled) {
+  Subsonic.on('enabled', function(isEnabled) {
     chrome.browserAction.setIcon({
       path: 'assets/images/icon-next' + (isEnabled ? '' : '-disabled') + '.png'
     });
   });
 
   chrome.browserAction.onClicked.addListener(function(tab) {
-    Subsonic.next();
+    if(Subsonic.isEnabled()) {
+      Subsonic.next();
+    }
   });
+
+  Subsonic.startMessageObserver();
 
 })();
 
