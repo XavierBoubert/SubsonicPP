@@ -4,7 +4,7 @@ SubsonicPP
 Subsonic ++ is a Chrome extension to extend subsonic server in desktop
 
 
-![alt tag](https://raw.github.com/XavierBoubert/SubsonicPP/readme/screenshot-1.png)
+![alt tag](https://raw.github.com/XavierBoubert/SubsonicPP/master/readme/screenshot-1.png)
 
 Installation
 ==========
